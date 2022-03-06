@@ -12,7 +12,9 @@
 const char* ssid = "ssid";
 const char* password =  "password";
  
-const char * host = "192.168.0.0";
+const char * hostpi = "192.168.0.0";
+const char * hosttest = "192.168.0.0";
+const char * host;
 const uint16_t port = 0000;
 
 char * key = "xxxxxxxxxxxxxxxx";
@@ -21,6 +23,7 @@ char * key = "xxxxxxxxxxxxxxxx";
 unsigned long sendtimeing = 0;
 
 const int RelayPin = 16;
+const int TestMode = 23;
 
 WiFiClient client;
 
@@ -34,7 +37,8 @@ boolean relay = false;
 void setup()
 {
   pinMode(RelayPin, OUTPUT); 
-  
+  pinMode(TestMode, INPUT_PULLUP);
+ 
   //set up coms
   Serial.begin(115200);
  
@@ -53,6 +57,14 @@ void setup()
     Serial.println("Couldn't find sensor!");
     while (1);
   }
+
+  if(digitalRead(TestMode) == HIGH){
+    host = hostpi;
+    Serial.println("normal mode");
+  }else{
+    host = hosttest;
+    Serial.println("test mode");
+  }
   
   lightMeter.begin();
   Serial.println(F("BH1750 Test begin")); 
@@ -69,7 +81,7 @@ void loop()
     Serial.println("Connected to server successful!");
   }
 
-  if(millis() >= sendtimeing + 500){
+  if(millis() >= sendtimeing + 250){
     sendData();
     sendtimeing = millis();
   }
@@ -105,8 +117,8 @@ void sendData(){
 
 void getData(String input){
   String dec = decr(input);
-  //Serial.println("Decoded???");
-  //Serial.println(dec);
+  Serial.println("Decoded: ");
+  Serial.println(dec);
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, dec);
   if (error) {
