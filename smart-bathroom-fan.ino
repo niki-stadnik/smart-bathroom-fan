@@ -126,6 +126,7 @@ void getData(String input){
     Serial.println(error.c_str());
     Serial.print("in:");
     Serial.println(input);
+    ESP.restart();
     return;
   }
   
