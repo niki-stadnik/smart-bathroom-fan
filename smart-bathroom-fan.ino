@@ -8,17 +8,18 @@
 #include "mbedtls/aes.h"
 #include <stdlib.h>
 
+#include "config.h"
 
-const char* ssid = "ssid";
-const char* password =  "password";
+
+const char* ssid = WIFI;
+const char* password =  PASS;
  
-const char * hostpi = "192.168.0.0";
-const char * hosttest = "192.168.0.0";
+const char * hostpi = HOSTPI;
+const char * hosttest = HOSTTEST;
 const char * host;
-const uint16_t port = 0000;
+const uint16_t port = PORT;
 
-char * key = "xxxxxxxxxxxxxxxx";
-// put a real key
+char * key = KEY;
 
 unsigned long sendtimeing = 0;
 
