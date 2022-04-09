@@ -22,7 +22,7 @@ char * key = "xxxxxxxxxxxxxxxx";
 
 unsigned long sendtimeing = 0;
 
-const int RelayPin = 16;
+const int RelayPin = 17;
 const int TestMode = 23;
 
 WiFiClient client;
@@ -31,6 +31,8 @@ BH1750 lightMeter;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 boolean relay = false;
 
+int countNoIdea = 0;
+
 
 
 
@@ -38,6 +40,8 @@ void setup()
 {
   pinMode(RelayPin, OUTPUT); 
   pinMode(TestMode, INPUT_PULLUP);
+
+  digitalWrite(RelayPin, LOW);
  
   //set up coms
   Serial.begin(115200);
@@ -55,11 +59,16 @@ void setup()
   Serial.println("HTU21D-F test");
   if (!htu.begin()) {
     Serial.println("Couldn't find sensor!");
-    while (1);
+    delay(500);
+    if (!htu.begin()) {
+      Serial.println("Couldn't find sensor! 2");
+      ESP.restart();
+    }
   }
 
   if(digitalRead(TestMode) == HIGH){
-    host = hostpi;
+    //host = hostpi;
+    host = hosttest;
     Serial.println("normal mode");
   }else{
     host = hosttest;
@@ -81,7 +90,7 @@ void loop()
     Serial.println("Connected to server successful!");
   }
 
-  if(millis() >= sendtimeing + 250){
+  if(millis() >= sendtimeing + 500){
     sendData();
     sendtimeing = millis();
   }
@@ -89,23 +98,27 @@ void loop()
   
 
   String line = client.readStringUntil('\r');
-  if(line != NULL && line.length() > 5){
+  if(line != NULL && line.length() > 5){ // was > 5
+    Serial.println(line.length());
     getData(line);
   }
 }
 
 void sendData(){
   float lux = lightMeter.readLightLevel();
+  float luxR = int(lux * 100) / 100.0;
   float temp = htu.readTemperature();
+  float tempR = (int(temp * 100) / 100.0) - 1.5;  //rounding and calibrating
   float rel_hum = htu.readHumidity();
+  float humR = (int(rel_hum * 100) / 100.0) + 15.74;
 
   DynamicJsonDocument doc(96);
   doc["ID"] = 1;
   JsonObject dat = doc.createNestedObject("data");
-  dat["temp"] = temp;
-  dat["hum"] = rel_hum;
-  dat["light"] = lux;
-  dat["relay"] = relay;
+  dat["bathTemp"] = tempR;
+  dat["bathHum"] = humR;
+  dat["bathLight"] = luxR;
+  dat["bathFan"] = relay;
   
   char json[96];
   serializeJson(doc, json);
@@ -119,6 +132,17 @@ void getData(String input){
   String dec = decr(input);
   Serial.println("Decoded: ");
   Serial.println(dec);
+
+  char firstChar = dec.charAt(0);
+  //Serial.println(firstChar);
+  if (firstChar != '{') {
+    countNoIdea++;
+    if (countNoIdea >= 5){
+      Serial.println("5 unknown messages");
+      ESP.restart();
+    }
+    return;   //ensures that the json is decoded correctly
+  }
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, dec);
   if (error) {
@@ -130,6 +154,8 @@ void getData(String input){
     return;
   }
   
+  countNoIdea = 0;
+
   int id = doc["ID"]; // 1000
   boolean dat = doc["data"];
   
