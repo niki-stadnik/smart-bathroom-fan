@@ -124,14 +124,18 @@ void sendData(){
   char json[96];
   serializeJson(doc, json);
 
-  String out = encr(json);  //encripting the json char array
+  //String out = encr(json);  //encripting the json char array
+  //client.println(out);
 
-  client.println(out);
+  client.println(json);
 }
 
 void getData(String input){
-  String dec = decr(input);
-  Serial.println("Decoded: ");
+  //String dec = decr(input);
+  //Serial.println("Decoded: ");
+  //Serial.println(dec);
+  String dec = input;
+
   Serial.println(dec);
 
   char firstChar = dec.charAt(0);
