@@ -68,8 +68,7 @@ void setup()
   }
 
   if(digitalRead(TestMode) == HIGH){
-    //host = hostpi;
-    host = hosttest;
+    host = hostpi;
     Serial.println("normal mode");
   }else{
     host = hosttest;
