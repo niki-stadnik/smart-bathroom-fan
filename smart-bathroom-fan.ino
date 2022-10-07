@@ -96,7 +96,7 @@ void loop()
   }
 
   
-
+  
   String line = client.readStringUntil('\r');
   if(line != NULL && line.length() > 5){ // was > 5
     Serial.println(line.length());
@@ -160,7 +160,10 @@ void getData(String input){
   
   countNoIdea = 0;
 
-  int id = doc["ID"]; // 1000
+  int id = doc["ID"]; // 1
+  if (id != 1){
+    return;
+  }
   boolean dat = doc["data"];
   
   if(dat == true){
