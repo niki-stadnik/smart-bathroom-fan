@@ -1,5 +1,6 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <WiFiClient.h>
 #include <Wire.h>
 #include <BH1750.h>
 #include "Adafruit_HTU21DF.h"
@@ -81,6 +82,12 @@ void setup()
 
 void loop()
 {
+
+  Serial.println(ESP.getFreeHeap());  // shows RAM used to see if it increases over time (it may crash becouse of that)
+
+
+
+
   if(!client.connected()){
     if (!client.connect(host, port)) {  
     Serial.println("Connection to host failed");
@@ -96,12 +103,39 @@ void loop()
   }
 
   
-  
+  receiveValidate();
+  /*
   String line = client.readStringUntil('\r');
   if(line != NULL && line.length() > 5){ // was > 5
     Serial.println(line.length());
     getData(line);
+  }*/
+}
+
+void receiveValidate(){
+  // Declare a buffer to store the received message
+  char buffer[256];
+
+  // Read the incoming data into the buffer
+  int bytesReceived = client.readBytesUntil('\r', buffer, sizeof(buffer));
+  buffer[bytesReceived] = '\0';
+
+  // Validate the length of the received message
+  if (bytesReceived == 0 || bytesReceived == sizeof(buffer) - 1) {
+    Serial.println("Error: Invalid message length");
+    return;
   }
+
+  // Validate the format of the received message
+  for (int i = 0; i < bytesReceived; i++) {
+    if (!isAlphaNumeric(buffer[i]) && buffer[i] != '-' && buffer[i] != '\n' && buffer[i] != '\r' && buffer[i] != ',' && buffer[i] != '.' && buffer[i] != ':' && buffer[i] != '[' && buffer[i] != ']' && buffer[i] != '{' && buffer[i] != '}' && buffer[i] != '\"' && buffer[i] != '\'' && buffer[i] != '\\') {
+      Serial.println("Error: Invalid message format");
+      return;
+    }
+  }
+
+  //parse
+  getData(buffer);
 }
 
 void sendData(){
@@ -129,14 +163,14 @@ void sendData(){
   client.println(json);
 }
 
-void getData(String input){
+void getData(char* input){
   //String dec = decr(input);
   //Serial.println("Decoded: ");
   //Serial.println(dec);
-  String dec = input;
+  //String dec = input;
 
-  Serial.println(dec);
-
+  //Serial.println(dec);
+  /*
   char firstChar = dec.charAt(0);
   //Serial.println(firstChar);
   if (firstChar != '{') {
@@ -146,9 +180,9 @@ void getData(String input){
       ESP.restart();
     }
     return;   //ensures that the json is decoded correctly
-  }
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, dec);
+  }*/
+  DynamicJsonDocument doc(256);
+  DeserializationError error = deserializeJson(doc, input); //doc, dec
   if (error) {
     Serial.print("deserializeJson() failed: ");
     Serial.println(error.c_str());
@@ -180,7 +214,7 @@ void getData(String input){
   //Serial.println(dat);  
 }
 
-
+/*
 String encr(char in[]){
   int x = strlen(in);
   int z = x/16;
@@ -206,7 +240,8 @@ String encr(char in[]){
   }
   return out;
 }
-
+*/
+/*
 String decr(String ini){
   char in[256];
   ini.toCharArray(in, 256);
@@ -234,7 +269,7 @@ String decr(String ini){
       Serial.print(k);
       Serial.print(": ");
       Serial.println(cipherTextOutput[i]);
-      */
+      *//*
       k++;
     }
     decrypt(cipherTextOutput, key, decipheredTextOutput);
@@ -250,7 +285,9 @@ String decr(String ini){
   //Serial.println(ini);
   return out;
 }
+*/
 
+/*
 
 void encrypt(char * plainText, char * key, unsigned char * outputBuffer){
  
@@ -271,3 +308,4 @@ void decrypt(unsigned char * chipherText, char * key, unsigned char * outputBuff
   mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_DECRYPT, (const unsigned char*)chipherText, outputBuffer);
   mbedtls_aes_free( &aes );
 }
+*/
