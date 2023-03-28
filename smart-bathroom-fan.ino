@@ -1,31 +1,34 @@
-#include <ArduinoJson.h>
+#include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiClient.h>
-#include <Wire.h>
+#include "WebSocketsClient.h"
+#include "StompClient.h"
+#include "SudoJSON.h"
+#include <ArduinoJson.h>
 #include <BH1750.h>
 #include "Adafruit_HTU21DF.h"
 
 //encryption
-#include "mbedtls/aes.h"
-#include <stdlib.h>
+//#include "mbedtls/aes.h"
+//#include <stdlib.h>
 
 #include "config.h"
+const char* wlan_ssid = WIFI;
+const char* wlan_password =  PASS;
+const char * ws_host = HOSTPI;
+const uint16_t ws_port = PORT;
+const char* ws_baseurl = URL; 
+bool useWSS = USEWSS;
+const char * key = KEY;
 
 
-const char* ssid = WIFI;
-const char* password =  PASS;
- 
-const char * hostpi = HOSTPI;
-const char * hosttest = HOSTTEST;
-const char * host;
-const uint16_t port = PORT;
+// VARIABLES
+WebSocketsClient webSocket;
+Stomp::StompClient stomper(webSocket, ws_host, ws_port, ws_baseurl, true);
 
-char * key = KEY;
 
 unsigned long sendtimeing = 0;
 
 const int RelayPin = 17;
-const int TestMode = 23;
 
 WiFiClient client;
 
@@ -38,23 +41,33 @@ int countNoIdea = 0;
 
 
 
-void setup()
-{
+void setup(){
+  
   pinMode(RelayPin, OUTPUT); 
-  pinMode(TestMode, INPUT_PULLUP);
-
   digitalWrite(RelayPin, LOW);
  
-  //set up coms
+  // setup serial
   Serial.begin(115200);
- 
-  WiFi.begin(ssid, password);
+  // flush it - ESP Serial seems to start with rubbish
+  Serial.println();
+  // connect to WiFi
+  Serial.println("Logging into WLAN: " + String(wlan_ssid));
+  Serial.print(" ...");
+  WiFi.begin(wlan_ssid, wlan_password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.println("...");
+    Serial.print(".");
   }
-  Serial.print("WiFi connected with IP: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(" success.");
+  Serial.print("IP: "); Serial.println(WiFi.localIP());
+  stomper.onConnect(subscribe);
+  stomper.onError(error);
+ // Start the StompClient
+  if (useWSS) {
+    stomper.beginSSL();
+  } else {
+    stomper.begin();
+  }
 
 
   //set up sensors
@@ -67,75 +80,36 @@ void setup()
       ESP.restart();
     }
   }
-
-  if(digitalRead(TestMode) == HIGH){
-    host = hostpi;
-    Serial.println("normal mode");
-  }else{
-    host = hosttest;
-    Serial.println("test mode");
-  }
   
   lightMeter.begin();
   Serial.println(F("BH1750 Test begin")); 
 }
 
+void subscribe(Stomp::StompCommand cmd) {
+  Serial.println("Connected to STOMP broker");
+  stomper.subscribe("/topic/bathroomFan", Stomp::CLIENT, handleMessage);    //this is the @MessageMapping("/test") anotation so /topic must be added
+}
+
+void error(const Stomp::StompCommand cmd) {
+  Serial.println("ERROR: " + cmd.body);
+}
+
+
+Stomp::Stomp_Ack_t handleMessage(const Stomp::StompCommand cmd) {
+  Serial.println("Got a message!");
+  Serial.println(cmd.body);
+  getData(cmd.body);
+  return Stomp::CONTINUE;
+}
+
 void loop()
 {
-
-  //Serial.println(ESP.getFreeHeap());  // shows RAM used to see if it increases over time (it may crash becouse of low ram)
-
-
-
-
-  if(!client.connected()){
-    if (!client.connect(host, port)) {  
-    Serial.println("Connection to host failed");
-    delay(1000);
-    return;
-    }
-    Serial.println("Connected to server successful!");
-  }
-
   if(millis() >= sendtimeing + 500){
     sendData();
     sendtimeing = millis();
   }
 
-  
-  receiveValidate();
-  /*
-  String line = client.readStringUntil('\r');
-  if(line != NULL && line.length() > 5){ // was > 5
-    Serial.println(line.length());
-    getData(line);
-  }*/
-}
-
-void receiveValidate(){
-  // Declare a buffer to store the received message
-  char buffer[256];
-
-  // Read the incoming data into the buffer
-  int bytesReceived = client.readBytesUntil('\r', buffer, sizeof(buffer));
-  buffer[bytesReceived] = '\0';
-
-  // Validate the length of the received message
-  if (bytesReceived == 0 || bytesReceived == sizeof(buffer) - 1) {
-    Serial.println("Error: Invalid message length");
-    return;
-  }
-
-  // Validate the format of the received message
-  for (int i = 0; i < bytesReceived; i++) {
-    if (!isAlphaNumeric(buffer[i]) && buffer[i] != '-' && buffer[i] != '\n' && buffer[i] != '\r' && buffer[i] != ',' && buffer[i] != '.' && buffer[i] != ':' && buffer[i] != '[' && buffer[i] != ']' && buffer[i] != '{' && buffer[i] != '}' && buffer[i] != '\"' && buffer[i] != '\'' && buffer[i] != '\\') {
-      Serial.println("Error: Invalid message format");
-      return;
-    }
-  }
-
-  //parse
-  getData(buffer);
+  webSocket.loop();
 }
 
 void sendData(){
@@ -146,58 +120,39 @@ void sendData(){
   float rel_hum = htu.readHumidity();
   float humR = (int(rel_hum * 100) / 100.0) + 15.74;
 
-  DynamicJsonDocument doc(256);  //96
-  doc["ID"] = 1;
-  JsonObject dat = doc.createNestedObject("data");
-  dat["bathTemp"] = tempR;
-  dat["bathHum"] = humR;
-  dat["bathLight"] = luxR;
-  dat["bathFan"] = relay;
+  // Construct the STOMP message
+  SudoJSON json;
+  json.addPair("bathTemp", tempR);
+  json.addPair("bathHum", humR);
+  json.addPair("bathLight", luxR);
+  json.addPair("bathFan", relay);
   
-  char json[256]; //96
-  serializeJson(doc, json);
-
-  //String out = encr(json);  //encripting the json char array
-  //client.println(out);
-
-  client.println(json);
+  // Send the message to the STOMP server
+  stomper.sendMessage("/app/bathroomFan", json.retrive());   //this is the @SendTo anotation
 }
 
-void getData(char* input){
-  //String dec = decr(input);
-  //Serial.println("Decoded: ");
-  //Serial.println(dec);
-  //String dec = input;
-
-  //Serial.println(dec);
-  /*
-  char firstChar = dec.charAt(0);
-  //Serial.println(firstChar);
-  if (firstChar != '{') {
-    countNoIdea++;
-    if (countNoIdea >= 5){
-      Serial.println("5 unknown messages");
-      ESP.restart();
-    }
-    return;   //ensures that the json is decoded correctly
-  }*/
+void getData(String input){
+  char string[input.length()+1];
+  char out[input.length()+1];
+  input.toCharArray(string, input.length()+1);
+  int count = 0;
+  for(int i =0; i < input.length(); i++ ) {
+    if (string[i] != '\\'){
+      out[i - count]=string[i];
+    }else count++;
+  }
+  Serial.println(out);
   DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, input); //doc, dec
+  DeserializationError error = deserializeJson(doc, out);
   if (error) {
     Serial.print("deserializeJson() failed: ");
     Serial.println(error.c_str());
     Serial.print("in:");
-    Serial.println(input);
+    Serial.println(out);
     ESP.restart();
     return;
   }
-  
-  countNoIdea = 0;
 
-  int id = doc["ID"]; // 1
-  if (id != 1){
-    return;
-  }
   boolean dat = doc["data"];
   
   if(dat == true){
@@ -209,9 +164,6 @@ void getData(char* input){
     relay = false;
     //sendData();
   }
-  
-  //Serial.println(id);
-  //Serial.println(dat);  
 }
 
 /*
