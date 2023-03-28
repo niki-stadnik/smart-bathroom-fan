@@ -83,7 +83,7 @@ void setup()
 void loop()
 {
 
-  Serial.println(ESP.getFreeHeap());  // shows RAM used to see if it increases over time (it may crash becouse of that)
+  //Serial.println(ESP.getFreeHeap());  // shows RAM used to see if it increases over time (it may crash becouse of low ram)
 
 
 
@@ -146,7 +146,7 @@ void sendData(){
   float rel_hum = htu.readHumidity();
   float humR = (int(rel_hum * 100) / 100.0) + 15.74;
 
-  DynamicJsonDocument doc(96);
+  DynamicJsonDocument doc(256);  //96
   doc["ID"] = 1;
   JsonObject dat = doc.createNestedObject("data");
   dat["bathTemp"] = tempR;
@@ -154,7 +154,7 @@ void sendData(){
   dat["bathLight"] = luxR;
   dat["bathFan"] = relay;
   
-  char json[96];
+  char json[256]; //96
   serializeJson(doc, json);
 
   //String out = encr(json);  //encripting the json char array
@@ -203,11 +203,11 @@ void getData(char* input){
   if(dat == true){
     digitalWrite(RelayPin, HIGH);
     relay = true;
-    sendData();
+    //sendData();
   }else{
     digitalWrite(RelayPin, LOW);
     relay = false;
-    sendData();
+    //sendData();
   }
   
   //Serial.println(id);
