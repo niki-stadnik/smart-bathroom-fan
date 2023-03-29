@@ -153,16 +153,17 @@ void getData(String input){
     return;
   }
 
-  boolean dat = doc["data"];
-  
+  boolean dat = false;
+  dat = doc["data"];
+
   if(dat == true){
     digitalWrite(RelayPin, HIGH);
     relay = true;
-    //sendData();
-  }else{
+    sendData();
+  }else if (dat == false){
     digitalWrite(RelayPin, LOW);
     relay = false;
-    //sendData();
+    sendData();
   }
 }
 
