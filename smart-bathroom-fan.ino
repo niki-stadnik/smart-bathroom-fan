@@ -116,9 +116,9 @@ void sendData(){
   float lux = lightMeter.readLightLevel();
   float luxR = int(lux * 100) / 100.0;
   float temp = htu.readTemperature();
-  float tempR = (int(temp * 100) / 100.0) - 1.5;  //rounding and calibrating
+  float tempR = (int(temp * 100) / 100.0);  //rounding and calibrating
   float rel_hum = htu.readHumidity();
-  float humR = (int(rel_hum * 100) / 100.0) + 15.74;
+  float humR = (int(rel_hum * 100) / 100.0);
 
   // Construct the STOMP message
   SudoJSON json;
@@ -153,17 +153,16 @@ void getData(String input){
     return;
   }
 
-  boolean dat = false;
-  dat = doc["data"];
+  boolean dat = doc["data"];
 
   if(dat == true){
     digitalWrite(RelayPin, HIGH);
     relay = true;
-    sendData();
-  }else if (dat == false){
+    //sendData();
+  }else{
     digitalWrite(RelayPin, LOW);
     relay = false;
-    sendData();
+    //sendData();
   }
 }
 
