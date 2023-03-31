@@ -110,9 +110,8 @@ Stomp::Stomp_Ack_t handleKeepAlive(const Stomp::StompCommand cmd) {
 }
 
 void loop(){
-  if(millis() >= keepAlive + 600000){  //if no messages are recieved in 10min - restart esp
+  if(millis() >= keepAlive + 60000){  //if no messages are recieved in 1min - restart esp
     ESP.restart();
-    keepAlive = millis();
   }
 
   if(millis() >= sendtimeing + 500){
