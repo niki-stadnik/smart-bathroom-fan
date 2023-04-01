@@ -3,7 +3,6 @@
 #include "WebSocketsClient.h"
 #include "StompClient.h"
 #include "SudoJSON.h"
-#include <ArduinoJson.h>
 #include <BH1750.h>
 #include "Adafruit_HTU21DF.h"
 
@@ -158,28 +157,8 @@ void sendData(){
 }
 
 void getData(String input){
-  char string[input.length()+1];
-  char out[input.length()+1];
-  input.toCharArray(string, input.length()+1);
-  int count = 0;
-  for(int i =0; i < input.length(); i++ ) {
-    if (string[i] != '\\'){
-      out[i - count]=string[i];
-    }else count++;
-  }
-  Serial.println(out);
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, out);
-  if (error) {
-    Serial.print("deserializeJson() failed: ");
-    Serial.println(error.c_str());
-    Serial.print("in:");
-    Serial.println(out);
-    ESP.restart();
-    return;
-  }
-
-  boolean dat = doc["data"];
+  SudoJSON json = SudoJSON(input);
+  boolean dat = json.getPairB("data");
 
   if(dat == true){
     digitalWrite(RelayPin, HIGH);
