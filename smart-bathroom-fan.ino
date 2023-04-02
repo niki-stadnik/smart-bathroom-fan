@@ -6,6 +6,19 @@
 #include <BH1750.h>
 #include "Adafruit_HTU21DF.h"
 
+//debuging
+#define DEBUG 1 //1 = debug messages ON; 0 = debug messages OFF
+
+#if DEBUG == 1
+#define debugStart(x) Serial.begin(x)
+#define debug(x) Serial.print(x)
+#define debugln(x) Serial.println(x)
+#else
+#define debugStart(x)
+#define debug(x)
+#define debugln(x)
+#endif
+
 //encryption
 //#include "mbedtls/aes.h"
 //#include <stdlib.h>
@@ -44,8 +57,6 @@ BH1750 lightMeter;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 boolean relay = false;
 
-int countNoIdea = 0;
-
 
 
 
@@ -61,19 +72,19 @@ void setup(){
   timerAlarmWrite(Timer0_Cfg, 5000000, true); //5 000 000 = 5s timer
   timerAlarmEnable(Timer0_Cfg);
   // setup serial
-  Serial.begin(115200);
+  debugStart(115200);
   // flush it - ESP Serial seems to start with rubbish
-  Serial.println();
+  debugln();
   // connect to WiFi
-  Serial.println("Logging into WLAN: " + String(wlan_ssid));
-  Serial.print(" ...");
+  debugln("Logging into WLAN: " + String(wlan_ssid));
+  debug(" ...");
   WiFi.begin(wlan_ssid, wlan_password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    debug(".");
   }
-  Serial.println(" success.");
-  Serial.print("IP: "); Serial.println(WiFi.localIP());
+  debugln(" success.");
+  debug("IP: "); debugln(WiFi.localIP());
   stomper.onConnect(subscribe);
   stomper.onError(error);
  // Start the StompClient
@@ -85,39 +96,39 @@ void setup(){
 
 
   //set up sensors
-  Serial.println("HTU21D-F test");
+  debugln("HTU21D-F test");
   if (!htu.begin()) {
-    Serial.println("Couldn't find sensor!");
+    debugln("Couldn't find sensor!");
     delay(500);
     if (!htu.begin()) {
-      Serial.println("Couldn't find sensor! 2");
+      debugln("Couldn't find sensor! 2");
       ESP.restart();
     }
   }
   
   lightMeter.begin();
-  Serial.println(F("BH1750 Test begin")); 
+  debugln("BH1750 Test begin"); 
 }
 
 void subscribe(Stomp::StompCommand cmd) {
-  Serial.println("Connected to STOMP broker");
+  debugln("Connected to STOMP broker");
   stomper.subscribe("/topic/bathroomFan", Stomp::CLIENT, handleMessage);    //this is the @MessageMapping("/test") anotation so /topic must be added
   stomper.subscribe("/topic/keepAlive", Stomp::CLIENT, handleKeepAlive);
 }
 
 void error(const Stomp::StompCommand cmd) {
-  Serial.println("ERROR: " + cmd.body);
+  debugln("ERROR: " + cmd.body);
 }
 
 
 Stomp::Stomp_Ack_t handleMessage(const Stomp::StompCommand cmd) {
-  Serial.println("Got a message!");
-  Serial.println(cmd.body);
+  debugln("Got a message!");
+  debugln(cmd.body);
   getData(cmd.body);
   return Stomp::CONTINUE;
 }
 Stomp::Stomp_Ack_t handleKeepAlive(const Stomp::StompCommand cmd) {
-  Serial.println(cmd.body);
+  debugln(cmd.body);
   keepAlive = millis();
   return Stomp::CONTINUE;
 }
