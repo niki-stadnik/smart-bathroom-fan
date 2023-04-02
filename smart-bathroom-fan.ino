@@ -145,6 +145,12 @@ void sendData(){
   float rel_hum = htu.readHumidity();
   float humR = (int(rel_hum * 100) / 100.0);
 
+  //free heap
+  SudoJSON jsonH;
+  int freeH = ESP.getFreeHeap();
+  jsonH.addPair("freeH", freeH);
+  stomper.sendMessage("/app/client", jsonH.retrive());
+
   // Construct the STOMP message
   SudoJSON json;
   json.addPair("bathTemp", tempR);
