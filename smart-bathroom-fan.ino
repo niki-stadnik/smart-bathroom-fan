@@ -7,7 +7,7 @@
 #include "Adafruit_HTU21DF.h"
 
 //debuging
-#define DEBUG 1 //1 = debug messages ON; 0 = debug messages OFF
+#define DEBUG 0 //1 = debug messages ON; 0 = debug messages OFF
 
 #if DEBUG == 1
 #define debugStart(x) Serial.begin(x)
@@ -69,7 +69,7 @@ void setup(){
   //Timer Interrupt
   Timer0_Cfg = timerBegin(0, 80, true);
   timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
-  timerAlarmWrite(Timer0_Cfg, 5000000, true); //5 000 000 = 5s timer
+  timerAlarmWrite(Timer0_Cfg, 30000000, true); //5 000 000 = 5s timer, 30 000 000us = 30s
   timerAlarmEnable(Timer0_Cfg);
   // setup serial
   debugStart(115200);
@@ -156,11 +156,13 @@ void sendData(){
   float rel_hum = htu.readHumidity();
   float humR = (int(rel_hum * 100) / 100.0);
 
+/*
   //free heap
   SudoJSON jsonH;
   int freeH = ESP.getFreeHeap();
   jsonH.addPair("freeH", freeH);
   stomper.sendMessage("/app/client", jsonH.retrive());
+  */
 
   // Construct the STOMP message
   SudoJSON json;
