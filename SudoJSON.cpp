@@ -54,8 +54,8 @@ SudoJSON::SudoJSON(String string){
 
 
 
-String SudoJSON::find(String value){
-  int siz = value.length();
+char* SudoJSON::find(const char value[]){
+  int siz = strlen(value);
   boolean flag = false;
   for (int i = 0; i < countAr; i = i + 2){
     if (siz != chars[i]) continue;
@@ -70,69 +70,89 @@ String SudoJSON::find(String value){
   }
   return "nope";
 }
-String SudoJSON::getPairS(String value){
-  String str = find(value);
+char* SudoJSON::getPairS(const char value[]){
+  char* str = find(value);
   return str;
 }
-float SudoJSON::getPairF(String value){
+float SudoJSON::getPairF(const char value[]){
   String str = find(value);
   float ff = str.toFloat();
   return ff;
 }
-int SudoJSON::getPairI(String value){
+int SudoJSON::getPairI(const char value[]){
   String str = find(value);
   int i = str.toInt();
   return i;
 }
-boolean SudoJSON::getPairB(String value){
-  String str = find(value);
+boolean SudoJSON::getPairB(const char value[]){
+  char * str = find(value);
   boolean state = false;
-  if(str == "true") state = true;
+  if(0 == strcmp(str, "true")) state = true;
   return state;
 }
 
 void SudoJSON::check(){
-  int length = message.length();
+  int length = strlen(message);
   if(length > 5){
     message[length - 1] = ',';
   }
 }
-void SudoJSON::addPair(String name, const char value[]){
+void SudoJSON::addPair(const char name[], const char value[]){
   check();
-  message += "\\\"";
-  message += name;
-  message += "\\\":\\\"";
-  message += value;
-  message += "\\\"}";
+  strcat(message, "\\\"");
+  strcat(message, name);
+  strcat(message, "\\\":\\\"");
+  strcat(message, value);
+  strcat(message, "\\\"}");
 }
-void SudoJSON::addPair(String name, int value){
+void SudoJSON::addPair(const char name[], int value){
   check();
-  message += "\\\"";
-  message += name;
-  message += "\\\":";
-  message += value;
-  message += "}";
+  char myCharArray[10];
+  itoa(value, myCharArray, 10);
+  strcat(message, "\\\"");
+  strcat(message, name);
+  strcat(message, "\\\":\\\"");
+  strcat(message, myCharArray);
+  strcat(message, "\\\"}");
 }
-void SudoJSON::addPair(String name, float value){
+void SudoJSON::addPair(const char name[], float value){
   check();
-  message += "\\\"";
-  message += name;
-  message += "\\\":";
-  message += value;
-  message += "}";
+  char myCharArray[10];
+  dtostrf(value, 5, 2, myCharArray);
+  strcat(message, "\\\"");
+  strcat(message, name);
+  strcat(message, "\\\":\\\"");
+  strcat(message, myCharArray);
+  strcat(message, "\\\"}");
 }
-void SudoJSON::addPair(String name, boolean value){
+void SudoJSON::addPair(const char name[], boolean value){
   check();
-  message += "\\\"";
-  message += name;
-  message += "\\\":";
-  message += value;
-  message += "}";
+  strcat(message, "\\\"");
+  strcat(message, name);
+  strcat(message, "\\\":\\\"");
+  if(value) strcat(message, "true");
+  else strcat(message, "false");
+  strcat(message, "\\\"}");
 }
-String SudoJSON::retrive(){
+char* SudoJSON::retrive(){
   return message;
 }
 
 
-
-
+void SudoJSON::startArrayE(const char value[]){
+  strcat(message, "\\\"");
+  strcat(message, value);
+  strcat(message, "\\\":[");
+}
+void SudoJSON::addArrayE(int value){
+  char myCharArray[10];
+  itoa(value, myCharArray, 10);
+  strcat(message, myCharArray);
+  strcat(message, ",");
+}
+char* SudoJSON::retriveArray(){
+  int len = strlen(message);
+  message[len - 1] = '\0';
+  strcat(message, "]}"); 
+  return message;
+}
